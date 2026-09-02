@@ -1,0 +1,22 @@
+# Runtime dependencies for the shared_libs packages (a2ui + data_export).
+# Mirror these into each consuming agent's requirements.txt AND the inline
+# REQUIREMENTS list in its deploy.py / deploy_a2a.py, and keep "./shared_libs"
+# in extra_packages so the whole tree is bundled into the Agent Engine package.
+# The agents currently pin these unpinned; match your agents' existing pins.
+
+# --- a2ui (charting) ---
+a2ui-agent-sdk          # imports as `a2ui`; the A2UI catalog/schema SDK
+
+# --- data_export (PNG/PDF/PPTX render + GCS sign + export toolset) ---
+# Used by data_export directly, and by a2ui through it (png / gcs_upload).
+vl-convert-python       # Vega-Lite -> PNG / SVG
+reportlab               # markdown -> PDF
+python-pptx             # markdown -> PPTX
+openpyxl                # XLSX export
+pillow                  # image ops
+google-cloud-storage    # GCS upload + signed URLs (downloads / interactive link)
+
+# NOTE: shared_libs.data_export is NOT a pip package — it is the vendored
+# sibling package in this same shared_libs/ tree. a2ui imports it as
+# `shared_libs.data_export`; ensure the whole shared_libs/ tree is vendored
+# together so that import always resolves.

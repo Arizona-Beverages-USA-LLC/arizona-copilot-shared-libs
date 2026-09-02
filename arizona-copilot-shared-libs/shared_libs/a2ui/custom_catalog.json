@@ -1,0 +1,509 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "catalogId": "https://arizonaicedt.com/a2ui/catalogs/arizona_copilot_combined_v1",
+  "components": {
+    "Text": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "object",
+          "description": "The text content to display. This can be a literal string or a reference to a value in the data model ('path', e.g., '/doc/title'). While simple Markdown formatting is supported (i.e. without HTML, images, or links), utilizing dedicated UI components is generally preferred for a richer and more structured presentation.",
+          "additionalProperties": false,
+          "properties": {
+            "literalString": {"type": "string"},
+            "path": {"type": "string"}
+          }
+        },
+        "usageHint": {
+          "type": "string",
+          "description": "A hint for the base text style. One of:\n- `h1`: Largest heading.\n- `h2`: Second largest heading.\n- `h3`: Third largest heading.\n- `h4`: Fourth largest heading.\n- `h5`: Fifth largest heading.\n- `caption`: Small text for captions.\n- `body`: Standard body text.",
+          "enum": ["h1", "h2", "h3", "h4", "h5", "caption", "body"]
+        }
+      },
+      "required": ["text"]
+    },
+    "Image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "type": "object",
+          "description": "The URL of the image to display.",
+          "additionalProperties": false,
+          "properties": {
+            "literalString": {"type": "string"},
+            "path": {"type": "string"}
+          }
+        },
+        "altText": {
+          "type": "object",
+          "description": "The alt text for the image.",
+          "additionalProperties": false,
+          "properties": {
+            "literalString": {"type": "string"},
+            "path": {"type": "string"}
+          }
+        },
+        "fit": {
+          "type": "string",
+          "description": "Specifies how the image should be resized to fit its container.",
+          "enum": ["contain", "cover", "fill", "none", "scale-down"]
+        },
+        "usageHint": {
+          "type": "string",
+          "description": "A hint for the image size and style.",
+          "enum": ["icon", "avatar", "smallFeature", "mediumFeature", "largeFeature", "header"]
+        }
+      },
+      "required": ["url"]
+    },
+    "Icon": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "object",
+          "description": "The name of the icon to display.",
+          "additionalProperties": false,
+          "properties": {
+            "literalString": {
+              "type": "string",
+              "enum": ["accountCircle", "add", "arrowBack", "arrowForward", "attachFile", "calendarToday", "call", "camera", "check", "close", "delete", "download", "edit", "event", "error", "favorite", "favoriteOff", "folder", "help", "home", "info", "locationOn", "lock", "lockOpen", "mail", "menu", "moreVert", "moreHoriz", "notificationsOff", "notifications", "payment", "person", "phone", "photo", "print", "refresh", "search", "send", "settings", "share", "shoppingCart", "star", "starHalf", "starOff", "upload", "visibility", "visibilityOff", "warning"]
+            },
+            "path": {"type": "string"}
+          }
+        }
+      },
+      "required": ["name"]
+    },
+    "Video": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "type": "object",
+          "description": "The URL of the video to display.",
+          "additionalProperties": false,
+          "properties": {
+            "literalString": {"type": "string"},
+            "path": {"type": "string"}
+          }
+        }
+      },
+      "required": ["url"]
+    },
+    "AudioPlayer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "literalString": {"type": "string"},
+            "path": {"type": "string"}
+          }
+        },
+        "description": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "literalString": {"type": "string"},
+            "path": {"type": "string"}
+          }
+        }
+      },
+      "required": ["url"]
+    },
+    "Row": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "children": {
+          "type": "object",
+          "description": "Defines the children. Use 'explicitList' for a fixed set of children, or 'template' to generate children from a data list.",
+          "additionalProperties": false,
+          "properties": {
+            "explicitList": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "template": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "componentId": {"type": "string"},
+                "dataBinding": {"type": "string"}
+              },
+              "required": ["componentId", "dataBinding"]
+            }
+          }
+        },
+        "distribution": {
+          "type": "string",
+          "enum": ["center", "end", "spaceAround", "spaceBetween", "spaceEvenly", "start"]
+        },
+        "alignment": {
+          "type": "string",
+          "enum": ["start", "center", "end", "stretch"]
+        }
+      },
+      "required": ["children"]
+    },
+    "Column": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "children": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "explicitList": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "template": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "componentId": {"type": "string"},
+                "dataBinding": {"type": "string"}
+              },
+              "required": ["componentId", "dataBinding"]
+            }
+          }
+        },
+        "distribution": {
+          "type": "string",
+          "enum": ["start", "center", "end", "spaceBetween", "spaceAround", "spaceEvenly"]
+        },
+        "alignment": {
+          "type": "string",
+          "enum": ["center", "end", "start", "stretch"]
+        }
+      },
+      "required": ["children"]
+    },
+    "List": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "children": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "explicitList": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "template": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "componentId": {"type": "string"},
+                "dataBinding": {"type": "string"}
+              },
+              "required": ["componentId", "dataBinding"]
+            }
+          }
+        },
+        "direction": {
+          "type": "string",
+          "enum": ["vertical", "horizontal"]
+        },
+        "alignment": {
+          "type": "string",
+          "enum": ["start", "center", "end", "stretch"]
+        }
+      },
+      "required": ["children"]
+    },
+    "Card": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "child": {
+          "type": "string",
+          "description": "The ID of the component to be rendered inside the card."
+        }
+      },
+      "required": ["child"]
+    },
+    "Tabs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tabItems": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "title": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "literalString": {"type": "string"},
+                  "path": {"type": "string"}
+                }
+              },
+              "child": {"type": "string"}
+            },
+            "required": ["title", "child"]
+          }
+        }
+      },
+      "required": ["tabItems"]
+    },
+    "Divider": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "axis": {
+          "type": "string",
+          "enum": ["horizontal", "vertical"]
+        }
+      }
+    },
+    "Modal": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entryPointChild": {"type": "string"},
+        "contentChild": {"type": "string"}
+      },
+      "required": ["entryPointChild", "contentChild"]
+    },
+    "Button": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "child": {"type": "string"},
+        "primary": {"type": "boolean"},
+        "action": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": {"type": "string"},
+            "context": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "key": {"type": "string"},
+                  "value": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "path": {"type": "string"},
+                      "literalString": {"type": "string"},
+                      "literalNumber": {"type": "number"},
+                      "literalBoolean": {"type": "boolean"}
+                    }
+                  }
+                },
+                "required": ["key", "value"]
+              }
+            }
+          },
+          "required": ["name"]
+        }
+      },
+      "required": ["child", "action"]
+    },
+    "CheckBox": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "literalString": {"type": "string"},
+            "path": {"type": "string"}
+          }
+        },
+        "value": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "literalBoolean": {"type": "boolean"},
+            "path": {"type": "string"}
+          }
+        }
+      },
+      "required": ["label", "value"]
+    },
+    "TextField": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "literalString": {"type": "string"},
+            "path": {"type": "string"}
+          }
+        },
+        "text": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "literalString": {"type": "string"},
+            "path": {"type": "string"}
+          }
+        },
+        "textFieldType": {
+          "type": "string",
+          "enum": ["date", "longText", "number", "shortText", "obscured"]
+        },
+        "validationRegexp": {"type": "string"}
+      },
+      "required": ["label"]
+    },
+    "DateTimeInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "literalString": {"type": "string"},
+            "path": {"type": "string"}
+          }
+        },
+        "enableDate": {"type": "boolean"},
+        "enableTime": {"type": "boolean"}
+      },
+      "required": ["value"]
+    },
+    "MultipleChoice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selections", "options"],
+      "properties": {
+        "selections": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "literalArray": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "path": {"type": "string"}
+          }
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "label": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "literalString": {"type": "string"},
+                  "path": {"type": "string"}
+                }
+              },
+              "value": {"type": "string"}
+            },
+            "required": ["label", "value"]
+          }
+        },
+        "maxAllowedSelections": {"type": "integer"},
+        "variant": {
+          "type": "string",
+          "enum": ["checkbox", "chips"]
+        },
+        "filterable": {"type": "boolean"}
+      }
+    },
+    "Slider": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "literalString": {"type": "string"},
+            "path": {"type": "string"}
+          }
+        },
+        "value": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "literalNumber": {"type": "number"},
+            "path": {"type": "string"}
+          }
+        },
+        "minValue": {"type": "number"},
+        "maxValue": {"type": "number"}
+      },
+      "required": ["value"]
+    },
+    "VegaChart": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A chart rendered from a Vega-Lite specification. Use for bar charts, line charts, scatter plots, or any data visualization. The spec follows the Vega-Lite JSON schema (https://vega.github.io/vega-lite/).",
+      "properties": {
+        "spec": {
+          "type": "object",
+          "description": "A Vega-Lite JSON specification object. Must include at minimum a `data` object (with a `values` array of data rows), a `mark` type (e.g. 'bar', 'line', 'point'), and an `encoding` object mapping fields to x/y axes.",
+          "additionalProperties": true
+        },
+        "title": {
+          "type": "object",
+          "description": "Optional display title shown above the chart.",
+          "additionalProperties": false,
+          "properties": {
+            "literalString": {"type": "string"},
+            "path": {"type": "string"}
+          }
+        }
+      },
+      "required": ["spec"]
+    },
+    "WebFrameSrcdoc": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "An embedded iframe rendering an HTML document inline in the chat. Use for fully custom interactive widgets that don't fit any other component.",
+      "properties": {
+        "html": {
+          "type": "object",
+          "description": "The HTML document to render inside the iframe's srcdoc attribute.",
+          "additionalProperties": false,
+          "properties": {
+            "literalString": {"type": "string"},
+            "path": {"type": "string"}
+          }
+        },
+        "height": {
+          "type": "integer",
+          "description": "Display height of the iframe in pixels. Defaults to 400 if not specified.",
+          "minimum": 100,
+          "maximum": 2000
+        }
+      },
+      "required": ["html"]
+    }
+  },
+  "styles": {
+    "font": {
+      "type": "string",
+      "description": "The primary font for the UI."
+    },
+    "primaryColor": {
+      "type": "string",
+      "description": "The primary UI color as a hexadecimal code (e.g., '#00BFFF').",
+      "pattern": "^#[0-9a-fA-F]{6}$"
+    }
+  }
+}

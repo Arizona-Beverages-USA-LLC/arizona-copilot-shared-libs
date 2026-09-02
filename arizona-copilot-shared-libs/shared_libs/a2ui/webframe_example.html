@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { font-family: system-ui, sans-serif; padding: 16px; margin: 0; background: #f7f8fa; }
+  .row { display: flex; align-items: center; margin: 8px 0; }
+  .row label { width: 160px; color: #333; }
+  .row input { flex: 1; padding: 6px 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; }
+  .result { margin-top: 16px; padding: 12px; background: #fff; border-radius: 6px; border: 1px solid #ddd; }
+  .result .v { font-size: 24px; font-weight: 600; color: #1a73e8; }
+  .result .l { font-size: 12px; color: #666; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="row"><label>Net Revenue ($)</label><input id="rev" type="number" value="142300000"></div>
+<div class="row"><label>Cost of Sales ($)</label><input id="cost" type="number" value="93600000"></div>
+<div class="result">
+  <div class="v" id="gp">$48.7M</div>
+  <div class="l">Gross Profit</div>
+  <div class="v" id="gm" style="margin-top:10px">34.2%</div>
+  <div class="l">Gross Margin</div>
+</div>
+<script>
+function fmt(n) {
+  if (Math.abs(n) >= 1e9) return "$" + (n / 1e9).toFixed(1) + "B";
+  if (Math.abs(n) >= 1e6) return "$" + (n / 1e6).toFixed(1) + "M";
+  if (Math.abs(n) >= 1e3) return "$" + (n / 1e3).toFixed(1) + "K";
+  return "$" + n.toFixed(0);
+}
+function update() {
+  var r = +document.getElementById("rev").value || 0;
+  var c = +document.getElementById("cost").value || 0;
+  var gp = r - c;
+  document.getElementById("gp").textContent = fmt(gp);
+  document.getElementById("gm").textContent = r ? ((gp / r) * 100).toFixed(1) + "%" : "0.0%";
+}
+document.getElementById("rev").addEventListener("input", update);
+document.getElementById("cost").addEventListener("input", update);
+</script>
+</body>
+</html>

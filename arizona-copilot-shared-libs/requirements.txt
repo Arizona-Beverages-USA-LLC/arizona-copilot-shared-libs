@@ -1,6 +1,6 @@
 # Runtime dependencies for the shared_libs packages (a2ui + data_export;
-# telemetry adds none — it needs only google-adk + google-genai, which every
-# ADK agent already has).
+# telemetry and caching add none — they need only google-adk + google-genai,
+# which every ADK agent already has).
 # Mirror these into each consuming agent's requirements.txt AND the inline
 # REQUIREMENTS list in its deploy.py / deploy_a2a.py, and keep "./shared_libs"
 # in extra_packages so the whole tree is bundled into the Agent Engine package.
@@ -23,6 +23,11 @@ google-cloud-storage    # GCS upload + signed URLs (downloads / interactive link
 # any ADK agent). Tier model names and the optional BigQuery ledger are injected
 # via configure_model_tiers() / configure_bq_ledger() — telemetry imports nothing
 # agent-specific and needs no GCS.
+
+# --- caching (context-cache config + turn-1 pre-warming) ---
+# No extra pip deps. Uses only google-adk (App, ContextCacheConfig,
+# CacheMetadata) + google-genai types. App name and pre-warm gating are passed
+# in by the agent; caching imports nothing agent-specific.
 
 # NOTE: shared_libs.data_export is NOT a pip package — it is the vendored
 # sibling package in this same shared_libs/ tree. a2ui imports it as

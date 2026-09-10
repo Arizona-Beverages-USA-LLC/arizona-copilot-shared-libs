@@ -15,12 +15,20 @@ Current contents:
     data_export/  — turn agent output into downloadable files (PNG, XLSX,
                      HTML, PDF, DOCX, PPTX). Builder-pattern ADK tools via
                      `create_export_toolset()`.
+    telemetry/    — per-turn time / tokens / cache-hit / cost instrumentation.
+                     Four ADK callbacks (before/after model, before/after tool)
+                     plus `configure_model_tiers()` and `configure_bq_ledger()`.
+                     Logs to Cloud Logging and (opt-in) appends a footer +
+                     machine-readable comment to the final response.
 
 Dependency note:
     a2ui depends on data_export (a2ui_bridge + chart_download_handler import
     `shared_libs.data_export.png / .gcs_upload / ._artifact`). data_export does
-    NOT depend on a2ui. Vendor the WHOLE shared_libs/ tree so a2ui's dependency
-    is always satisfied; you may vendor data_export alone, but never a2ui alone.
+    NOT depend on a2ui. telemetry depends on NEITHER — it imports nothing
+    agent-specific (tier model names + optional BQ ledger are injected via its
+    configure_* hooks), so it may be vendored entirely on its own. Vendor the
+    WHOLE shared_libs/ tree so a2ui's dependency is always satisfied; you may
+    vendor data_export or telemetry alone, but never a2ui alone.
 
 Adding a new shared library:
     1. Create shared_libs/<name>/ with __init__.py

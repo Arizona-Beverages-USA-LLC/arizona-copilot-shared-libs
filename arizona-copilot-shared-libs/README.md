@@ -5,18 +5,20 @@ Sales & Merchandising, and future agents). One source of truth, **vendored**
 into each agent repo — replacing the drifted per-agent copies that lived in
 each agent's `shared/`.
 
-The repo ships one tree, `shared_libs/`, with two sibling packages:
+The repo ships one tree, `shared_libs/`, with three sibling packages:
 
 ```
 shared_libs/
 ├── a2ui/          A2UI charting (emit → render → download buttons)
-└── data_export/   PNG/PDF/PPTX render + GCS sign + ADK export toolset
+├── data_export/   PNG/PDF/PPTX render + GCS sign + ADK export toolset
+└── telemetry/     per-turn time / tokens / cache / cost instrumentation
 ```
 
 Each agent vendors the **whole `shared_libs/` tree** at `<agent_repo>/shared_libs/`
-and imports `from shared_libs.a2ui import ...` / `from shared_libs.data_export import ...`.
+and imports `from shared_libs.a2ui import ...` / `from shared_libs.data_export import ...`
+/ `from shared_libs.telemetry import ...`.
 
-## Why both live here (and why as siblings)
+## Why they live here (and why as siblings)
 
 - **`a2ui` hard-depends on `data_export`.** `a2ui_bridge.py` and
   `chart_download_handler.py` import `render_vega_to_html` (png),
@@ -31,6 +33,11 @@ and imports `from shared_libs.a2ui import ...` / `from shared_libs.data_export i
   from `a2ui`), so they're kept as **peers**, not nested. You may vendor
   `data_export` alone (an agent that only needs export tools, no charts); you must
   **never** vendor `a2ui` without `data_export`.
+- **`telemetry` is independent of both.** It imports nothing from `a2ui`,
+  `data_export`, or any agent module — the model-tier names and the optional
+  BigQuery ledger are injected through its `configure_*` hooks. Every agent wants
+  per-turn cost/latency instrumentation, so it earns a canonical home too, and it
+  may be vendored entirely on its own.
 
 ## `a2ui/` — A2UI charting
 
@@ -83,6 +90,73 @@ data_export/
 └── _types.py          shared types
 ```
 
+## `telemetry/` — per-turn time / tokens / cache / cost
+
+Instruments every user-facing turn: elapsed / LLM / tool / other **time**,
+**tokens** per tier (triage / fast / deep, split input/output), **cache-hit**
+tokens, and **cost** per tier. Numbers are always logged to Cloud Logging under
+`[TELEMETRY]`; when `SHOW_TELEMETRY_FOOTER=1` it also appends a muted footer to
+the final response plus a machine-readable `<!--agent_telemetry ...-->` comment
+(the cross-A2A wire contract other agents parse).
+
+It is **agent-agnostic** — it imports nothing from `a2ui`, `data_export`, or any
+agent's own modules. Two `configure_*` hooks inject what it would otherwise have
+to import:
+
+- `configure_model_tiers(triage, fast, deep, agent_name_tiers=None)` — the model
+  name each tier resolves to, so a call is bucketed to the right tier. Defaults
+  to the `TRIAGE_MODEL` / `FAST_MODEL` / `DEEP_MODEL` env vars (with `AGENT_MODEL`
+  fallback) until an agent overrides them exactly.
+- `configure_bq_ledger(reset, last_drained)` — *optional*; agents that query
+  BigQuery register their ledger callables so the per-tool footer shows query
+  economics (queries / bytes billed / cost). Agents that don't query BQ never
+  call it and the BQ line is simply omitted.
+
+Tier resolution keys off the ADK agent name first (a `<agent>_fast` / `<agent>_deep`
+sub-agent maps to that tier automatically; register other names via
+`agent_name_tiers`), then falls back to matching the call's model against the
+configured tier models.
+
+```
+telemetry/
+├── __init__.py       public API: the four callbacks + configure_model_tiers /
+│                     configure_bq_ledger + PRICING + compute_cost
+└── turn_telemetry.py the callbacks, per-tier token/cost accounting, PRICING
+                      table, footer + machine-comment builders
+```
+
+Runtime deps: only `google-adk` + `google-genai` (already required by any ADK
+agent). No extra pip deps, no GCS.
+
+### Wiring an agent (telemetry)
+
+```python
+from shared_libs.telemetry import (
+    configure_model_tiers,
+    telemetry_before_model_callback, telemetry_after_model_callback,
+    telemetry_before_tool_callback, telemetry_after_tool_callback,
+)
+from .shared.model_config import TRIAGE_MODEL, FAST_MODEL, DEEP_MODEL
+
+configure_model_tiers(TRIAGE_MODEL, FAST_MODEL, DEEP_MODEL)  # once, at import
+
+# Optional — only if the agent queries BigQuery:
+from shared_libs.telemetry import configure_bq_ledger
+from .tools.bigquery.client import reset_drained, last_drained_ledger
+configure_bq_ledger(reset=reset_drained, last_drained=last_drained_ledger)
+
+root_agent = Agent(
+    ...,
+    before_tool_callback=telemetry_before_tool_callback,
+    after_tool_callback=telemetry_after_tool_callback,
+)
+```
+
+Chain the model-side callbacks around whatever the agent already runs in its
+before/after-model callbacks — telemetry LAST in the after-model chain so its
+footer lands beneath any correction notes. See sales-merch's `agent.py`
+(`_chained_after_callback`) for the reference chain.
+
 ## Canonical vs. vendored
 
 - **Canonical source of truth:** this repo (`arizona-copilot-shared-libs`), org GitHub.
@@ -111,9 +185,9 @@ root_agent = Agent(
 )
 ```
 
-Telemetry is intentionally **decoupled** — a2ui never imports `turn_telemetry`.
-If an agent wants telemetry, it chains its own telemetry callbacks around these
-two (see IRI's `agent.py` for the pattern).
+Telemetry is intentionally **decoupled** — a2ui never imports the `telemetry`
+package. If an agent wants telemetry, it vendors `shared_libs/telemetry` too and
+chains its callbacks around these two (see "Wiring an agent (telemetry)" above).
 
 Add `A2UI_GUIDELINES_CORE.md` into the agent's skill/prompt and replace the
 domain examples with that agent's own. Prefer VIP's proven template (which names

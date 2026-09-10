@@ -4,9 +4,10 @@ This repo is the single source of truth. Each agent repo carries a **vendored
 copy** of the whole tree at `<agent_repo>/shared_libs/`. Keep them identical —
 change here, then re-sync.
 
-Vendor the **whole `shared_libs/` tree** (both packages). `a2ui` imports
+Vendor the **whole `shared_libs/` tree** (all three packages). `a2ui` imports
 `shared_libs.data_export`, so a2ui without data_export is broken. (An agent that
-only wants the export tools, no charts, may vendor just `shared_libs/data_export/`
+only wants the export tools, no charts, may vendor just `shared_libs/data_export/`;
+an agent that only wants instrumentation may vendor just `shared_libs/telemetry/`
 — but never a2ui alone.)
 
 ## First-time install into an agent
@@ -17,7 +18,8 @@ only wants the export tools, no charts, may vendor just `shared_libs/data_export
    <agent_repo>/shared_libs/
    ├── __init__.py
    ├── a2ui/
-   └── data_export/
+   ├── data_export/
+   └── telemetry/
    ```
 
 2. Add the runtime deps (see `requirements.txt`): put the pip deps in the agent's
@@ -26,6 +28,10 @@ only wants the export tools, no charts, may vendor just `shared_libs/data_export
 
 3. Wire the two a2ui callbacks on the agent (see README "Wiring an agent"). If the
    agent offers file exports, wire `create_export_toolset()` from `data_export`.
+   For telemetry, call `configure_model_tiers(TRIAGE_MODEL, FAST_MODEL, DEEP_MODEL)`
+   once at import, register `configure_bq_ledger(...)` if the agent queries
+   BigQuery, and chain the four telemetry callbacks (see README "Wiring an agent
+   (telemetry)").
 
 4. Add `A2UI_GUIDELINES_CORE.md` to the agent's skill/prompt; swap in the agent's
    own domain chart examples (keep VIP's proven, catalog-agnostic template).

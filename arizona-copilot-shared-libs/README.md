@@ -5,18 +5,19 @@ Sales & Merchandising, and future agents). One source of truth, **vendored**
 into each agent repo — replacing the drifted per-agent copies that lived in
 each agent's `shared/`.
 
-The repo ships one tree, `shared_libs/`, with three sibling packages:
+The repo ships one tree, `shared_libs/`, with four sibling packages:
 
 ```
 shared_libs/
 ├── a2ui/          A2UI charting (emit → render → download buttons)
 ├── data_export/   PNG/PDF/PPTX render + GCS sign + ADK export toolset
-└── telemetry/     per-turn time / tokens / cache / cost instrumentation
+├── telemetry/     per-turn time / tokens / cache / cost instrumentation
+└── caching/       ADK context-cache config + turn-1 cache pre-warming
 ```
 
 Each agent vendors the **whole `shared_libs/` tree** at `<agent_repo>/shared_libs/`
 and imports `from shared_libs.a2ui import ...` / `from shared_libs.data_export import ...`
-/ `from shared_libs.telemetry import ...`.
+/ `from shared_libs.telemetry import ...` / `from shared_libs.caching import ...`.
 
 ## Why they live here (and why as siblings)
 
@@ -38,6 +39,11 @@ and imports `from shared_libs.a2ui import ...` / `from shared_libs.data_export i
   BigQuery ledger are injected through its `configure_*` hooks. Every agent wants
   per-turn cost/latency instrumentation, so it earns a canonical home too, and it
   may be vendored entirely on its own.
+- **`caching` is independent of all of them.** It imports nothing agent-specific
+  — the App name is an argument, and pre-warm gating is a caller-supplied
+  predicate. It replaces the near-identical per-agent `shared/app_builder.py`
+  copies (one env-driven `build_app`) and adds a turn-1 cache pre-warm that was
+  previously implemented in only one agent. May be vendored on its own.
 
 ## `a2ui/` — A2UI charting
 
@@ -156,6 +162,60 @@ Chain the model-side callbacks around whatever the agent already runs in its
 before/after-model callbacks — telemetry LAST in the after-model chain so its
 footer lands beneath any correction notes. See sales-merch's `agent.py`
 (`_chained_after_callback`) for the reference chain.
+
+## `caching/` — context-cache config + turn-1 pre-warming
+
+Two independent, agent-agnostic pieces every ADK data agent wants:
+
+- **`build_app(root_agent, app_name=...)`** — the canonical ADK `App` wrapper +
+  `ContextCacheConfig`, built from the `CONTEXT_CACHE_*` env vars. Replaces the
+  near-byte-identical per-agent `shared/app_builder.py` copies; the only
+  per-agent value (the App name) is an argument. Returns a bare `App` when
+  `CONTEXT_CACHE_ENABLED=0`.
+- **`build_prewarm_before_callback(gate=None)`** / **`inject_prewarm_metadata()`**
+  — create the Vertex context cache on the **first** turn instead of the second.
+  ADK's cache manager skips cache creation on turn 1 (no prior token count), so
+  the first (often deep) query of every fresh session otherwise pays the full
+  uncached prompt (~$0.35 on a ~70 KB prompt). Injecting a fingerprint-only
+  `CacheMetadata` + a synthetic token count makes ADK create the cache
+  immediately. This is pure ADK mechanics — independent of prompt structure, so
+  it drops into any agent unchanged.
+
+```
+caching/
+├── __init__.py       public API (build_app, build_context_cache_config,
+│                     build_prewarm_before_callback, inject_prewarm_metadata,
+│                     should_prewarm, prewarm_enabled)
+├── context_cache.py  App wrapper + ContextCacheConfig from CONTEXT_CACHE_* env
+└── prewarm.py        turn-1 CacheMetadata injection + before-model callback
+```
+
+Env: `CONTEXT_CACHE_ENABLED` (1), `CONTEXT_CACHE_MIN_TOKENS` (4096),
+`CONTEXT_CACHE_TTL_SECONDS` (1800), `CONTEXT_CACHE_INTERVALS` (10),
+`CACHE_PRE_WARM_ENABLED` (1). Runtime deps: only `google-adk` + `google-genai`.
+
+### Wiring an agent (caching)
+
+```python
+from shared_libs.caching import build_app, build_prewarm_before_callback
+
+root_app = build_app(root_agent, app_name="my_copilot")  # keep the name stable
+
+# Pre-warm the cold turn. Chain this into the agent's before-model callback;
+# the optional gate restricts warming (e.g. deep tier only, skip a provider
+# whose prompt isn't cacheable):
+prewarm_cb = build_prewarm_before_callback(
+    gate=lambda ctx, req: (ctx.agent_name or "").endswith("_deep"),
+)
+# ... inside the chained before_model_callback: prewarm_cb(callback_context, llm_request)
+```
+
+**Getting the full benefit is prompt-side, not this library.** Cache value scales
+with hit rate, which the agent's prompt controls: keep volatile content (the
+date, any dynamic value) at the **tail** of the system instruction; minimize the
+number of distinct instruction shapes (one per tier × render-mode); order layers
+by change-rate (static schema/KPI first, mode/report last). This library is the
+mechanism; those conventions are the hit rate.
 
 ## Canonical vs. vendored
 

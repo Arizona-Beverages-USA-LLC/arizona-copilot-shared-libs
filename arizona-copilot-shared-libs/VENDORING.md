@@ -4,11 +4,11 @@ This repo is the single source of truth. Each agent repo carries a **vendored
 copy** of the whole tree at `<agent_repo>/shared_libs/`. Keep them identical —
 change here, then re-sync.
 
-Vendor the **whole `shared_libs/` tree** (all three packages). `a2ui` imports
+Vendor the **whole `shared_libs/` tree** (all four packages). `a2ui` imports
 `shared_libs.data_export`, so a2ui without data_export is broken. (An agent that
 only wants the export tools, no charts, may vendor just `shared_libs/data_export/`;
-an agent that only wants instrumentation may vendor just `shared_libs/telemetry/`
-— but never a2ui alone.)
+an agent that only wants instrumentation or caching may vendor just
+`shared_libs/telemetry/` or `shared_libs/caching/` — but never a2ui alone.)
 
 ## First-time install into an agent
 
@@ -19,7 +19,8 @@ an agent that only wants instrumentation may vendor just `shared_libs/telemetry/
    ├── __init__.py
    ├── a2ui/
    ├── data_export/
-   └── telemetry/
+   ├── telemetry/
+   └── caching/
    ```
 
 2. Add the runtime deps (see `requirements.txt`): put the pip deps in the agent's
@@ -32,6 +33,9 @@ an agent that only wants instrumentation may vendor just `shared_libs/telemetry/
    once at import, register `configure_bq_ledger(...)` if the agent queries
    BigQuery, and chain the four telemetry callbacks (see README "Wiring an agent
    (telemetry)").
+   For caching, build the App with `build_app(root_agent, app_name=...)` (replace
+   any per-agent `app_builder`) and chain `build_prewarm_before_callback(...)`
+   into the before-model callback (see README "Wiring an agent (caching)").
 
 4. Add `A2UI_GUIDELINES_CORE.md` to the agent's skill/prompt; swap in the agent's
    own domain chart examples (keep VIP's proven, catalog-agnostic template).

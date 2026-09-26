@@ -82,9 +82,11 @@ def dedupe(findings: list[Finding]) -> list[Finding]:
     3% (e.g. an owner and its only banner). Evidence is merged into the survivor."""
     kept: list[Finding] = []
     for f in sorted(findings, key=lambda x: -abs(x.impact)):
+        # new items (no comparator) are duplicates only on an EXACT match
+        tol = 0.0 if not f.comparator else 0.03
         dup = next((g for g in kept if g.source == f.source and g.cls == f.cls
-                    and g.focal not in (None, 0) and _close(g.focal, f.focal)
-                    and _close(g.comparator, f.comparator)), None)
+                    and g.focal not in (None, 0) and _close(g.focal, f.focal, tol)
+                    and _close(g.comparator, f.comparator, tol)), None)
         if dup:
             dup.evidence += [e for e in f.evidence if e not in dup.evidence]
         else:

@@ -20,8 +20,8 @@ PROMPT_CONTRACT = """\
   momentum · Momentum · Profit & quality · Recovery · Clean sell-through. A class
   this data cannot measure is stated once as "not measurable in this data".
 - **Grades** are qualitative and come from the scan — never upgrade one:
-  Strong = confirmed in 2+ data layers and persistent (usually only the Master
-  Sales Analyst can reach it); Moderate = one layer, statistically robust and
+  Strong = confirmed in 2+ data layers and persistent (usually reachable only
+  when several data layers are combined); Moderate = one layer, statistically robust and
   persistent; Emerging = one window, small base or a caution flag → "early
   signals to watch", never a headline.
 - **Table:** `Class | Positive (scope) | Evidence — figure, comparator, window | Grade`.

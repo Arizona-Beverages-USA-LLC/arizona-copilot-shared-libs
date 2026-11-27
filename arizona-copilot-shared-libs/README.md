@@ -118,6 +118,26 @@ to import:
   economics (queries / bytes billed / cost). Agents that don't query BQ never
   call it and the BQ line is simply omitted.
 
+### `telemetry/agent_analytics.py` — every step, in BigQuery (2026-11-27)
+
+Google's **BigQuery Agent Analytics plugin** for these agents: every model request and response, tool call (arguments,
+SQL, result), error, token count and step time of a turn goes to `gen-lang-client-0552847374.adk_agent_analytics.
+agent_events` — the same table, settings and views as the SAP KG agents (sap-kg-semantic decisions 91–92) — and is
+linked to the Tea Talk turn that asked (Tea Talk sends `tt_turn_id`, `tt_user`, ... as A2A message metadata).
+
+```python
+from shared_libs.telemetry import agent_analytics as aa
+app = App(root_agent=root_agent, name=APP_NAME, plugins=aa.plugins("vip_distributor"))   # or app.model_copy(...)
+...
+link = aa.state_delta(context.message.metadata)        # in the executor, per turn
+runner.run_async(..., **({"state_delta": link} if link else {}))
+```
+
+Off unless `AGENT_ANALYTICS=1` in the engine's environment. Requirements: `google-adk[a2a,bigquery-analytics]` (2.13+
+for the evaluation views), and pin `a2a-sdk` / `protobuf` to the deploying machine's versions (the A2A agent is pickled).
+The engine's identity needs dataset `WRITER` on `adk_agent_analytics` (the Agent Engine service agent has it). The
+views are created centrally, so engines run with `create_views=False`; rows go through the background writer.
+
 Tier resolution keys off the ADK agent name first (a `<agent>_fast` / `<agent>_deep`
 sub-agent maps to that tier automatically; register other names via
 `agent_name_tiers`), then falls back to matching the call's model against the

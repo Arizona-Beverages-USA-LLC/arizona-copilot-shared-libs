@@ -11,7 +11,7 @@ Every model request and response, tool call (arguments, SQL, result), error, tok
 `gen-lang-client-0552847374.adk_agent_analytics.agent_events` (US, beside Tea Talk's tt_telemetry_*). Tea Talk sends
 its ids as A2A message metadata (tt_turn_id, tt_conversation_id, tt_session_id, tt_user, tt_env); state_delta puts them
 in the session state for the turn, which the plugin logs on every event. Owner's decisions (2026-11-27): full content
-(100 KB per event), 90-day partitions, admins and the Investigator read it.
+(up to 1 MB per text block), 270-day partitions, admins and the Investigator read it.
 
 Off unless AGENT_ANALYTICS=1 (an engine environment variable): rollback is the setting.
 """
@@ -31,7 +31,7 @@ PROJECT = os.environ.get("ADK_ANALYTICS_PROJECT", "gen-lang-client-0552847374")
 DATASET = os.environ.get("ADK_ANALYTICS_DATASET", "adk_agent_analytics")
 TABLE = os.environ.get("ADK_ANALYTICS_TABLE", "agent_events")
 LOCATION = os.environ.get("ADK_ANALYTICS_LOCATION", "US")
-MAX_CONTENT = 100 * 1024
+MAX_CONTENT = 1024 * 1024      # per text block; 100 KB cut 46% of model requests (2026-11-27)
 LINK_KEYS = ("tt_turn_id", "tt_conversation_id", "tt_session_id", "tt_user", "tt_env")
 _PLUGINS: list = []
 _DROPS_SEEN: dict[str, int] = {}

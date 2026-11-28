@@ -6,6 +6,7 @@ the SAP KG runtime. Same table, settings and Tea Talk link as sap-kg-semantic's 
     App(root_agent=..., name=..., plugins=aa.plugins("vip_distributor"))      # where the App is built
     state_delta = aa.state_delta(context.message.metadata)                     # in the executor, per turn
     aa.drop_check("vip_distributor")                                          # after each turn: lost rows -> console
+    aa.warm_up()                                                              # once per process, at start
 
 Every model request and response, tool call (arguments, SQL, result), error, token count and step time goes to
 `gen-lang-client-0552847374.adk_agent_analytics.agent_events` (US, beside Tea Talk's tt_telemetry_*). Tea Talk sends
@@ -18,10 +19,12 @@ Off unless AGENT_ANALYTICS=1 (an engine environment variable): rollback is the s
 from __future__ import annotations
 
 import datetime as dt
+import importlib
 import json
 import logging
 import os
 import threading
+import time
 import uuid
 from typing import Any, Optional
 
@@ -77,6 +80,63 @@ def state_delta(meta: Optional[dict]) -> Optional[dict]:
     """{"tt": {...}} for runner.run_async(state_delta=...) when Tea Talk sent its ids, else None."""
     link = link_from_metadata(meta)
     return {"tt": link} if link else None
+
+
+def warm_up(timeout_s: Optional[float] = None) -> float:
+    """Run the plugins' one-time setup now, at process start, instead of inside the process's first turn. Returns the
+    seconds it took (-1.0 when it did not finish). Never raises.
+
+    Two one-time costs otherwise land in a worker process's first turn: the setup (BigQuery client, table check, the
+    Storage Write client on the plugin's own background loop), and the modules the plugin's before_tool_callback
+    imports lazily to classify a tool (_get_tool_origin: google.adk.tools.mcp_tool, which loads the `mcp` package when
+    it is installed, and google.adk.agents.remote_a2a_agent; ~1.3 s of CPU on a laptop). Agent Engine throttles CPU
+    while no request is open, which a non-blocking A2A turn is (the send returns at once, the turn runs behind the
+    polls), so on the Sales copilot the imports held the first tool call of each process 6-9 s (measured 2026-11-28;
+    plugin off: 0 s). At start the container has CPU.
+
+    Runs in its own thread and event loop: with flush_on_run_end=False the plugin keeps its writer on a process-wide
+    background loop, so nothing it builds is tied to this loop. Joined up to AGENT_ANALYTICS_WARM_TIMEOUT_S (30 s);
+    past that, setup goes on in the background and the first turn joins it (the plugin coalesces setup)."""
+    if not _PLUGINS:
+        return 0.0
+    if timeout_s is None:
+        try:
+            timeout_s = float(os.environ.get("AGENT_ANALYTICS_WARM_TIMEOUT_S", "30"))
+        except ValueError:
+            timeout_s = 30.0
+    out: dict = {}
+    t0 = time.monotonic()
+
+    def run() -> None:
+        for mod in ("google.adk.tools.mcp_tool.mcp_tool", "google.adk.agents.remote_a2a_agent"):
+            try:                                                   # what _get_tool_origin imports on a first tool call
+                importlib.import_module(mod)
+            except Exception:  # noqa: BLE001 -- not installed: the plugin skips it the same way
+                pass
+        try:
+            import asyncio
+
+            async def go() -> None:
+                for p in list(_PLUGINS):
+                    start = getattr(p, "_ensure_started", None)       # ADK's own setup entry (before_run_callback)
+                    if start is not None:
+                        out[id(p)] = await start()
+            asyncio.run(go())
+        except Exception as exc:  # noqa: BLE001
+            out["error"] = f"{type(exc).__name__}: {str(exc)[:200]}"
+
+    th = threading.Thread(target=run, name="agent-analytics-warm-up", daemon=True)
+    th.start()
+    th.join(max(0.0, timeout_s))
+    took = time.monotonic() - t0 if not th.is_alive() else -1.0
+    try:
+        results = [v for k, v in out.items() if k != "error"]
+        print(f"[AGENT_ANALYTICS] warm-up pid={os.getpid()} "
+              + (f"done in {took:.1f}s" if took >= 0 else f"still running after {timeout_s:.0f}s (goes on)")
+              + f" setup={results}" + (f" error={out['error']}" if "error" in out else ""), flush=True)
+    except Exception:  # noqa: BLE001
+        pass
+    return took
 
 
 def _tags(engine: str) -> dict:

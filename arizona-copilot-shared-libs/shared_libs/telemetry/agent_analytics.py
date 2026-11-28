@@ -19,6 +19,7 @@ Off unless AGENT_ANALYTICS=1 (an engine environment variable): rollback is the s
 from __future__ import annotations
 
 import datetime as dt
+import importlib
 import json
 import logging
 import os
@@ -85,10 +86,13 @@ def warm_up(timeout_s: Optional[float] = None) -> float:
     """Run the plugins' one-time setup now, at process start, instead of inside the process's first turn. Returns the
     seconds it took (-1.0 when it did not finish). Never raises.
 
-    The setup (BigQuery client, table check, the Storage Write client on the plugin's own background loop) otherwise
-    runs on a worker process's first turn. Agent Engine throttles CPU while no request is open, which a non-blocking
-    A2A turn is (the send returns at once, the turn runs behind the polls), so on the Sales copilot it held that turn
-    6-9 s (measured 2026-11-28; plugin off: 0 s). At start the container has CPU.
+    Two one-time costs otherwise land in a worker process's first turn: the setup (BigQuery client, table check, the
+    Storage Write client on the plugin's own background loop), and the modules the plugin's before_tool_callback
+    imports lazily to classify a tool (_get_tool_origin: google.adk.tools.mcp_tool, which loads the `mcp` package when
+    it is installed, and google.adk.agents.remote_a2a_agent; ~1.3 s of CPU on a laptop). Agent Engine throttles CPU
+    while no request is open, which a non-blocking A2A turn is (the send returns at once, the turn runs behind the
+    polls), so on the Sales copilot the imports held the first tool call of each process 6-9 s (measured 2026-11-28;
+    plugin off: 0 s). At start the container has CPU.
 
     Runs in its own thread and event loop: with flush_on_run_end=False the plugin keeps its writer on a process-wide
     background loop, so nothing it builds is tied to this loop. Joined up to AGENT_ANALYTICS_WARM_TIMEOUT_S (30 s);
@@ -104,6 +108,11 @@ def warm_up(timeout_s: Optional[float] = None) -> float:
     t0 = time.monotonic()
 
     def run() -> None:
+        for mod in ("google.adk.tools.mcp_tool.mcp_tool", "google.adk.agents.remote_a2a_agent"):
+            try:                                                   # what _get_tool_origin imports on a first tool call
+                importlib.import_module(mod)
+            except Exception:  # noqa: BLE001 -- not installed: the plugin skips it the same way
+                pass
         try:
             import asyncio
 

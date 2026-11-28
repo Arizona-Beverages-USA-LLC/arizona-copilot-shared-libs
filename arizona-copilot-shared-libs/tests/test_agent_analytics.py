@@ -64,6 +64,10 @@ def test_warm_up_runs_setup_at_start_and_never_holds_or_fails_the_boot(monkeypat
     assert AA.warm_up() == 0.0                                             # no plugin, nothing to do
     monkeypatch.setattr(AA, "_PLUGINS", [_Ok()])
     assert AA.warm_up() >= 0 and len(calls) == 1                           # setup ran, in its own loop
+    import importlib.util
+    import sys
+    assert "google.adk.agents.remote_a2a_agent" in sys.modules             # the plugin's lazy tool-origin imports
+    assert "google.adk.tools.mcp_tool.mcp_tool" in sys.modules or importlib.util.find_spec("mcp") is None
     monkeypatch.setattr(AA, "_PLUGINS", [_Boom()])
     assert AA.warm_up() >= 0                                               # a failing setup does not raise
     monkeypatch.setattr(AA, "_PLUGINS", [_Slow()])
